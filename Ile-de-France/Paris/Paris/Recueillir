@@ -1,0 +1,52 @@
+import tkinter as tk
+import configparser
+from binance.client import Client
+
+config_ini = configparser.ConfigParser()
+config_ini.read('./config.ini',encoding='UTF-8')
+
+
+Binance_key = config_ini['BINANCE.API']['apikey']
+Binance_sec = config_ini['BINANCE.API']['secret']
+Binance_api = Client(Binance_key,Binance_sec)
+
+#残高を取得
+Myasset = Binance_api.get_asset_balance(asset='USDT')
+
+#変数定義
+Price_now = 0
+
+#トレードのペア
+TradePair = config_ini['DEFAULT']['tradepair']
+
+#価格取得
+Price_now = Binance_api.get_symbol_ticker(symbol=TradePair)['price']
+
+
+
+
+tmr = 0 # 経過時間を記録する変数
+
+def counter():
+    global tmr # 関数内の変数tmrをグローバル変数のtmrとして扱う宣言
+    tmr = tmr + 1
+    label["text"] = tmr
+    root.after(1000, counter) # 1秒毎にcounter()を実行
+
+
+def Getprice():
+    global Price_now
+    Price_now = Binance_api.get_symbol_ticker(symbol=TradePair)['price']
+    label["text"] = Price_now
+
+    root.after(1000, Getprice) # 1秒毎にcounter()を実行
+
+
+root = tk.Tk()
+root.title("リアルタイム処理で秒数をカウント")
+root.geometry("400x300")
+label = tk.Label(font=("Ubunt Mono", 160))
+label.pack()
+# counter() # 最初のcounter()を実行しリアルタイム処理を始める
+Getprice()
+root.mainloop()

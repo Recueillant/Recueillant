@@ -1,0 +1,29 @@
+import configparser
+from binance.client import Client
+import math
+
+config_ini = configparser.ConfigParser()
+config_ini.read('./config.ini',encoding='UTF-8')
+
+
+Binance_key = config_ini['BINANCE.API']['apikey']
+Binance_sec = config_ini['BINANCE.API']['secret']
+Binance_api = Client(Binance_key,Binance_sec)
+
+myamount = Binance_api.get_asset_balance(asset='USDT')['free']
+price_now= Binance_api.get_symbol_ticker(symbol='BTCUSDT')['price']
+#浮動コインの半分量を手数料を差し引いた99％で取引をする
+tradelot = int((((float(myamount)/2)/float(price_now))*0.99)*1000)/1000
+#info     = Binance_api.get_symbol_info('BTCUSDT')
+#buyinfo  = Binance_api.get_order(symbol='BTCUSDT',orderId='20831189811')
+#status   = Binance_api.get_account()
+orders   = Binance_api.get_asset_balance(asset='USDT')['free']
+
+print(tradelot)
+#print(buyinfo)
+print(orders)
+
+#buyorder  = Binance_api.order_market_buy(symbol='BTCUSDT', quantity=tradelot)
+#print(buyorder)
+#sellorder = Binance_api.order_market_sell(symbol='BTCUSDT',quantity=tradelot)
+#print(sellorder)
