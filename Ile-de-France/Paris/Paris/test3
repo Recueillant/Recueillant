@@ -1,0 +1,16 @@
+import configparser
+import math
+import ccxt
+import pandas as pd
+
+config_ini = configparser.ConfigParser()
+config_ini.read('./config.ini',encoding='UTF-8')
+
+#Make instance of CoinCheck
+COINCHECK_instance = ccxt.coincheck()
+#Load markets
+symbol = 'BTC/JPY'
+COINCHECK_market = COINCHECK_instance.load_markets([symbol])
+COINCHECK_ticker = COINCHECK_instance.fetch_ticker(symbol=symbol)
+
+print(COINCHECK_instance.fetch_ticker(symbol=symbol)['ask'])

@@ -1,29 +1,140 @@
 import configparser
-from binance.client import Client
 import math
+import ccxt
+import pandas as pd
+import talib
+import tkinter as tk
 
 config_ini = configparser.ConfigParser()
 config_ini.read('./config.ini',encoding='UTF-8')
 
+#Make instance of CoinCheck
+COINCHECK_instance = ccxt.coincheck()
+#Load markets
+symbol = 'BTC/JPY'
+COINCHECK_market = COINCHECK_instance.load_markets([symbol])
+COINCHECK_ticker = COINCHECK_instance.fetch_ticker(symbol=symbol)
 
-Binance_key = config_ini['BINANCE.API']['apikey']
-Binance_sec = config_ini['BINANCE.API']['secret']
-Binance_api = Client(Binance_key,Binance_sec)
+btc_price    = []
+btc_price15  = []
 
-myamount = Binance_api.get_asset_balance(asset='USDT')['free']
-price_now= Binance_api.get_symbol_ticker(symbol='BTCUSDT')['price']
-#浮動コインの半分量を手数料を差し引いた99％で取引をする
-tradelot = int((((float(myamount)/2)/float(price_now))*0.99)*1000)/1000
-#info     = Binance_api.get_symbol_info('BTCUSDT')
-#buyinfo  = Binance_api.get_order(symbol='BTCUSDT',orderId='20831189811')
-#status   = Binance_api.get_account()
-orders   = Binance_api.get_asset_balance(asset='USDT')['free']
+HODL_Price15 = 0
 
-print(tradelot)
-#print(buyinfo)
-print(orders)
+HODL_FLG15 = False
+BUY15_FLG  = False
 
-#buyorder  = Binance_api.order_market_buy(symbol='BTCUSDT', quantity=tradelot)
-#print(buyorder)
-#sellorder = Binance_api.order_market_sell(symbol='BTCUSDT',quantity=tradelot)
-#print(sellorder)
+min15range = 0
+
+#2秒ごとに処理を実行する
+counter = 10000
+
+#各足の計算
+
+min001 = 6
+min015 = 90
+
+Myasset = 10000
+
+def GetPrice():
+    global Myasset
+    # Myasset = Binance_api.get_asset_balance(asset='USDT')['free']
+
+    global Price_now
+    Price_now = COINCHECK_instance.fetch_ticker(symbol=symbol)['ask']
+    label["text"] = Price_now
+    
+    # コインチェック価格取得
+    global btc_price
+    btc_price.append(Price_now)
+
+    global btc_price15 #15分足用
+    global min15range
+    global min015
+    if min15range == min015:
+       btc_price15.append(Price_now)
+
+  
+    global HODL_FLG15
+    global BUY15_FLG
+
+    # ボリンジャーバンド引数情報
+    period  = 20  # データ取得期間
+    bbup    = 2.1   # upper-band：標準偏差
+    bbdwn   = 2.1   # down-band：標準偏差
+    ma_type = 0   # 移動平均の種類（0:単純移動平均）
+    
+    # ボリンジャーバンド指標獲得
+    if min15range == min015:
+        global bb_up15
+        global bb_down15
+        global bb_middle15      
+        bb_up15, bb_middle15, bb_down15 = talib.BBANDS(pd.Series(btc_price15),  # 価格データ
+                                                      timeperiod=period,     # データ取得期間
+                                                      nbdevup=bbup,          # upper-band：標準偏差 
+                                                      nbdevdn=bbdwn,         # down-band：標準偏差
+                                                      matype=ma_type)        # 移動平均の種類（0:単純移動平均） 
+        min15range = 0 
+      
+    if len(btc_price15) != 0:
+      if float(btc_price[-2]) < float(btc_price[-1]) and HODL_FLG15 == False and BUY15_FLG == True:
+          global HODL_Price15
+          
+          #購入ロジック
+          # myamount = Binance_api.get_asset_balance(asset='USDT')['free']
+          #浮動コインの半分量を手数料を差し引いた99％で取引をする
+          # global tradelot15
+          # tradelot15 = int((((float(myamount)/2)/float(Price_now))*0.99)*1000)/1000
+          # buyorder  = Binance_api.order_market_buy(symbol=TradePair, quantity=tradelot15)
+          # HODL_Price15 = float(buyorder['price'])
+          
+          HODL_Price15 = int((float(Price_now))/float(Myasset))
+          print('BUY NOW !! 15min ' + str(HODL_Price15)) 
+          
+          HODL_FLG15 = True
+          BUY15_FLG  = False
+
+      if float(Price_now) >= bb_middle15.iloc[-1] and HODL_FLG15 == True:
+          
+          #売却ロジック
+          #sellorder = Binance_api.order_market_sell(symbol='BTCUSDT',quantity=tradelot15)
+          SELL_Price15 = int((float(Price_now))/float(Myasset))
+          Myasset = Myasset + SELL_Price15 - HODL_Price15
+          print('Result is 15min ' + str(float(SELL_Price15 - HODL_Price15)))
+          
+          HODL_Price15 = 0
+          HODL_FLG15 = False
+
+      if float(btc_price[-1]) <= bb_down15.iloc[-1]:
+          BUY15_FLG = True
+
+    label5["text"] = Myasset
+
+    #メモリ節約
+    if min15range>=900:
+      del btc_price[0]
+      del btc_price15[0]
+      del bb_up15[0]
+      del bb_middle15[0]
+      del bb_down15[0]
+    
+    # min01range += 1
+    min15range += 1
+
+    global counter
+    root.after(counter, GetPrice) # 10秒毎にcounter()を実行
+
+root = tk.Tk()
+root.title("リアルタイム処理で秒数をカウント")
+root.geometry("500x400")
+label  = tk.Label(font=("Ubunt Mono", 50, "bold"))
+label5 = tk.Label(font=("Ubunt Mono", 30))
+
+
+label.pack()
+label5.pack()
+label5.place(x=400, y=200)
+
+
+GetPrice()
+# counter() # 最初のcounter()を実行しリアルタイム処理を始める
+root.mainloop()

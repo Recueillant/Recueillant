@@ -1,17 +1,21 @@
 import tkinter as tk
 import configparser
-from binance.client import Client
+import ccxt
 
 config_ini = configparser.ConfigParser()
 config_ini.read('./config.ini',encoding='UTF-8')
 
 
-Binance_key = config_ini['BINANCE.API']['apikey']
-Binance_sec = config_ini['BINANCE.API']['secret']
-Binance_api = Client(Binance_key,Binance_sec)
+COINCHECK_key = config_ini['COINCHECK']['apikey']
+COINCHECK_sec = config_ini['COINCHECK']['secret']
+
+#コインチェックのインスタンス化
+COINCHECK_instance = ccxt.coincheck()
+
+
 
 #残高を取得
-Myasset = Binance_api.get_asset_balance(asset='USDT')
+Myasset = COINCHECK_api.get_asset_balance(asset='USDT')
 
 #変数定義
 Price_now = 0
